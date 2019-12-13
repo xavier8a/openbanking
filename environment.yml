@@ -1,0 +1,7 @@
+name: openbanking
+
+dependencies:
+- python=3.7
+- pip
+- redis
+- ujson

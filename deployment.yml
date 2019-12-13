@@ -1,0 +1,32 @@
+# Update <REGISTRY> <NAMESPACE> values before use
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openbanking
+  labels:
+    app: openbanking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openbanking
+  template:
+    metadata:
+      labels:
+        app: openbanking
+    spec:
+      containers:
+      - name: openbanking
+        image: xavier8a/openbanking:latest
+        ports:
+        - containerPort: 8080
+        imagePullPolicy: Always
+        env:
+        - name: REDIS_SERVER
+          valueFrom: redis-13637.c212.ap-south-1-1.ec2.cloud.redislabs.com
+        - name: REDIS_PORT
+          valueFrom: 13637
+        - name: REDIS_PASSWORD
+          valueFrom: interdin.1
+        - name: REDIS_POOL
+          valueFrom: 10

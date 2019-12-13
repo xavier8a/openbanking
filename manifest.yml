@@ -1,0 +1,12 @@
+---
+applications:
+- name: openbanking
+  buildpack: https://github.com/cloudfoundry/buildpack-python.git#v1.7.0
+  random-route: true
+    command: python3 server_japronto.py
+  memory: 128M
+  disk_quota: 1.2G
+language: python
+default_versions:
+- name: python
+  version: 3.7
