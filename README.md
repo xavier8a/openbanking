@@ -22,7 +22,20 @@ cd openbanking
 
   Peruse the files in the *get-started-python* directory to familiarize yourself with the contents.
 
-## 2. Run the app locally
+## 2. Create environment variables
+
+To execute openbanking, you need to create environment variables first.
+
+  ```
+export REDIS_SERVER=127.0.0.1
+export REDIS_PORT=6379
+export REDIS_PASSWORD=
+export REDIS_POOL=7
+export PORT=8080
+  ```
+
+
+## 3. Run the app locally
 
 Install the dependencies listed in the [requirements.txt](https://pip.readthedocs.io/en/stable/user_guide/#requirements-files) file to be able to run the app locally.
 
@@ -38,21 +51,8 @@ python3 server_japronto.py
 
  View your app at: http://localhost:8080
 
-## 4. Create environment variables
 
-To execute openbanking, you need to create environment variables first.
-
-  ```
-
-export REDIS_SERVER=127.0.0.1
-export REDIS_PORT=6379
-export REDIS_PASSWORD=
-export REDIS_POOL=7
-export PORT=8080
-
-  ```
-
-## 5. Prepare the app for deployment
+## 4. Prepare the app for deployment
 
 To deploy to IBM Cloud, it can be helpful to set up a manifest.yml file. One is provided for you with the sample. Take a moment to look at it.
 
@@ -64,7 +64,7 @@ The manifest.yml includes basic information about your app, such as the name, ho
    memory: 128M
  ```
 
-## 6. Deploy the app
+## 5. Deploy the app
 
 You can use the Cloud Foundry CLI to deploy apps.
 
@@ -101,7 +101,7 @@ cf apps
   ```
   command to view your apps status and see the URL.
 
-## 5. Create your environment variables
+## 6. Create your environment variables
 
 Next, we'll add a NoSQL database to this application and set up the application so that it can run locally and on IBM Cloud.
 
