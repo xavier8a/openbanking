@@ -582,7 +582,7 @@ async def main():
             data = (await conn.lrange(k, 0, -1))._result
             if data.count > 0:
                 for i in data._data_queue:
-                    lists[k].append(json.loads(i))
+                    v.append(json.loads(i))
         # *** Create serializer sub-process *** #
         p = Process(name='serializer', target=serialize, args=(queue,))
         p.start()
