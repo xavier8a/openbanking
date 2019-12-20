@@ -273,11 +273,7 @@ def accredit(transaction):
 
 
 async def transfers(request):
-    global CUSTOMERS
     global TRANSACTIONS
-    global MOVEMENTS
-    global ACCOUNTS
-    global CREDIT_CARDS
 
     message = dict(
         response=dict(
@@ -324,12 +320,12 @@ async def transfers(request):
                 return handle_response(request, message, 0, "Sorry, your transaction can't be completed!")
         else:
             return handle_response(request, message, 2, "Method Not Allowed")
-    except Exception as e:
+    except Exception as exception:
         return handle_response(
             request,
             message,
             1,
-            "Sorry, your data is wrong. %s" % str(e.args)
+            "Sorry, your data is wrong. %s" % str(exception.args)
         )
 
 
@@ -397,12 +393,12 @@ def credit_cards_statement(request):
 
 
 async def fill(request):
-    global CUSTOMERS
+    global lists
     message = dict(response=dict(code=1, message="Something is wrong."))
     try:
         if request.method == 'GET':
-            if len(ACCOUNTS) == 0:
-                for customer in CUSTOMERS:
+            if len(lists['accounts']) == 0:
+                for customer in lists['customers']:
                     if int(customer["id"]) % 2 != 0:
                         loan_account = {
                             "customer_id": customer["id"],
@@ -417,7 +413,7 @@ async def fill(request):
                                 loan_account["number"][-2:]
                             ]
                         )
-                        ACCOUNTS.append(loan_account)
+                        lists['accounts'].append(loan_account)
                         last_code = str(random.randint(5000, 6000))
                         credit_card = {
                             "customer_id": customer["id"],
@@ -435,7 +431,7 @@ async def fill(request):
                             "available_quota": '3000.00',
                             "court_date": 1
                         }
-                        CREDIT_CARDS.append(credit_card)
+                        lists['credit_cards'].append(credit_card)
 
                     deposit_account = {
                         "customer_id": customer["id"],
@@ -450,7 +446,7 @@ async def fill(request):
                             deposit_account["number"][-2:]
                         ]
                     )
-                    ACCOUNTS.append(deposit_account)
+                    lists['accounts'].append(deposit_account)
                     last_code = str(random.randint(5000, 6000))
                     credit_card = {
                         "customer_id": customer["id"],
@@ -467,7 +463,7 @@ async def fill(request):
                         "available_quota": '1500.00',
                         "court_date": 24
                     }
-                    CREDIT_CARDS.append(credit_card)
+                    lists['credit_cards'].append(credit_card)
                     data = {
                         "data": ['ACCOUNTS', 'CREDIT_CARDS'],
                         "lists": lists
@@ -506,8 +502,6 @@ async def clear(request):
 
 async def customer_register(request):
     global CUSTOMERS
-    global app
-
     message = dict(response=dict(code=1, message="Sorry, your data is wrong."))
     try:
         if request.method == 'POST':
@@ -541,8 +535,8 @@ async def customer_register(request):
             return request.Response(json=message)
         else:
             return handle_response(request, message, 2, "Method Not Allowed")
-    except Exception as e:
-        message['response']['error'] = str(e.args)
+    except Exception as exception:
+        message['response']['error'] = str(exception.args)
         return handle_response(request, message, 1, "Sorry, your data is wrong.")
 
 
