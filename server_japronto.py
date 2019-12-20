@@ -487,11 +487,7 @@ async def fill(request):
 
 
 async def clear(request):
-    global CUSTOMERS
-    global ACCOUNTS
-    global CREDIT_CARDS
-    global MOVEMENTS
-
+    global lists
     message = dict(response=dict(code=1, message="Something is wrong."))
     try:
         if request.method == 'GET':
