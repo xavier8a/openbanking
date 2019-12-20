@@ -579,10 +579,9 @@ async def main():
         # *** Deserialize data from redis *** #
         conn = await asyncio_redis.Pool.create(**redis_params)
         for k, v in lists.items():
-            data = (await conn.lrange(k, 0, -1))._result
-            if data.count > 0:
-                for i in data._data_queue:
-                    v.append(json.loads(i))
+            data = await conn.lrange(k, 0, -1)
+            for i in data:
+                v.append(json.loads(await i))
         # *** Create serializer sub-process *** #
         p = Process(name='serializer', target=serialize, args=(queue,))
         p.start()
