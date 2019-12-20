@@ -496,11 +496,7 @@ async def clear(request):
     try:
         if request.method == 'GET':
             await conn.flushdb()
-            CUSTOMERS.clear()
-            ACCOUNTS.clear()
-            CREDIT_CARDS.clear()
-            MOVEMENTS.clear()
-            TRANSACTIONS.clear()
+            [v.clear() for k, v in lists.items()]
             resp = handle_response(request, message, 0, 'FLUSH DB OK!')
         else:
             resp = handle_response(request, message, 2, "Method Not Allowed")
@@ -585,11 +581,8 @@ def root(request):
 
 
 async def main():
-    global ACCOUNTS
-    global CREDIT_CARDS
-    global CUSTOMERS
+    global lists
     global conn
-    global port
     global redis_params
 
     try:
@@ -602,11 +595,11 @@ async def main():
         redis_transactions = (await conn.lrange('transactions', 0, -1))._result
 
         if redis_accounts.count > 0 or redis_credit_cards.count > 0 or redis_customers.count > 0:
-            [ACCOUNTS.append(json.loads(account)) for account in redis_accounts._data_queue]
-            [CREDIT_CARDS.append(json.loads(credit_card)) for credit_card in redis_credit_cards._data_queue]
-            [CUSTOMERS.append(json.loads(customer)) for customer in redis_customers._data_queue]
-            [MOVEMENTS.append(json.loads(movement)) for movement in redis_movements._data_queue]
-            [TRANSACTIONS.append(json.loads(transaction)) for transaction in redis_transactions._data_queue]
+            [lists['accounts'].append(json.loads(account)) for account in redis_accounts._data_queue]
+            [lists['credit_cards'].append(json.loads(credit_card)) for credit_card in redis_credit_cards._data_queue]
+            [lists['customers'].append(json.loads(customer)) for customer in redis_customers._data_queue]
+            [lists['movements'].append(json.loads(movement)) for movement in redis_movements._data_queue]
+            [lists['transactions'].append(json.loads(transaction)) for transaction in redis_transactions._data_queue]
 
         p = Process(name='serializer', target=serialize, args=(queue,))
         p.start()
