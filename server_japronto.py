@@ -576,25 +576,17 @@ async def main():
     global redis_params
 
     try:
+        # *** Deserialize data from redis *** #
         conn = await asyncio_redis.Pool.create(**redis_params)
-
-        redis_accounts = (await conn.lrange('accounts', 0, -1))._result
-        redis_credit_cards = (await conn.lrange('credit_cards', 0, -1))._result
-        redis_customers = (await conn.lrange('customers', 0, -1))._result
-        redis_movements = (await conn.lrange('movements', 0, -1))._result
-        redis_transactions = (await conn.lrange('transactions', 0, -1))._result
-
-        if redis_accounts.count > 0 or redis_credit_cards.count > 0 or redis_customers.count > 0:
-            [lists['accounts'].append(json.loads(account)) for account in redis_accounts._data_queue]
-            [lists['credit_cards'].append(json.loads(credit_card)) for credit_card in redis_credit_cards._data_queue]
-            [lists['customers'].append(json.loads(customer)) for customer in redis_customers._data_queue]
-            [lists['movements'].append(json.loads(movement)) for movement in redis_movements._data_queue]
-            [lists['transactions'].append(json.loads(transaction)) for transaction in redis_transactions._data_queue]
-
+        for k, v in lists.items():
+            data = (await conn.lrange(k, 0, -1))._result
+            if data.count > 0:
+                for i in data._data_queue:
+                    lists[k].append(json.loads(i))
+        # *** Create serializer sub-process *** #
         p = Process(name='serializer', target=serialize, args=(queue,))
         p.start()
         print("Process SERIALIZER was created with PID: %s" % str(p.pid))
-
     except Exception as e:
         if e.args[0] != "This event loop is already running":
             print(
