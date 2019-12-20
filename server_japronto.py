@@ -52,10 +52,13 @@ json_attributes = [
 ]
 
 port = int(os.getenv('PORT', 8080))
-redis_host = os.environ['REDIS_SERVER']
-redis_port = int(os.environ['REDIS_PORT'])
-redis_password = os.environ['REDIS_PASSWORD']
-redis_pool_size = int(os.environ['REDIS_POOL'])
+
+redis_params = {
+    'host': os.getenv('REDIS_SERVER', '127.0.0.1'),
+    'port': int(os.getenv('REDIS_PORT', 6379)),
+    'password': os.getenv('REDIS_PASSWORD', None),
+    'poolsize': int(os.getenv('REDIS_POOL', 7))
+}
 
 conn = None
 queue = Queue()
@@ -79,19 +82,7 @@ def serialize(process_queue):
             if len(values) > 0:
                 await redis_conn.rpush(key, values)
 
-        if os.environ['REDIS_PASSWORD'].strip() == '':
-            redis_conn = await asyncio_redis.Pool.create(
-                host=os.environ['REDIS_SERVER'],
-                port=int(os.environ['REDIS_PORT']),
-                poolsize=int(os.environ['REDIS_POOL'])
-            )
-        else:
-            redis_conn = await asyncio_redis.Pool.create(
-                host=os.environ['REDIS_SERVER'],
-                port=int(os.environ['REDIS_PORT']),
-                password=os.environ['REDIS_PASSWORD'],
-                poolsize=int(os.environ['REDIS_POOL'])
-            )
+        redis_conn = await asyncio_redis.Pool.create(**redis_params)
 
         while True:
             obj = ujson.loads(p_queue.get())
@@ -534,8 +525,8 @@ async def clear(request):
         else:
             resp = handle_response(request, message, 2, "Method Not Allowed")
 
-    except Exception as e:
-        message['response']['error'] = str(e.args)
+    except Exception as exception:
+        message['response']['error'] = str(exception.args)
         resp = request.Response(json=message)
     finally:
         return resp
@@ -599,25 +590,10 @@ async def main():
     global CUSTOMERS
     global conn
     global port
-    global redis_host
-    global redis_port
-    global redis_password
-    global redis_pool_size
+    global redis_params
 
     try:
-        if redis_password.strip() == '':
-            conn = await asyncio_redis.Pool.create(
-                host=redis_host,
-                port=redis_port,
-                poolsize=redis_pool_size
-            )
-        else:
-            conn = await asyncio_redis.Pool.create(
-                host=redis_host,
-                port=redis_port,
-                password=redis_password,
-                poolsize=redis_pool_size
-            )
+        conn = await asyncio_redis.Pool.create(**redis_params)
 
         redis_accounts = (await conn.lrange('accounts', 0, -1))._result
         redis_credit_cards = (await conn.lrange('credit_cards', 0, -1))._result
@@ -638,7 +614,10 @@ async def main():
 
     except Exception as e:
         if e.args[0] != "This event loop is already running":
-            print("Can't connect to REDIS Server %s PORT %s" % (redis_host, redis_port))
+            print(
+                "Can't connect to REDIS Server %s PORT %s" %
+                (redis_params['host'], redis_params['port'])
+            )
             print(e.args[0])
 
 
