@@ -12,8 +12,9 @@ from decimal import *
 
 try:
     sys.path.append(os.path.abspath('./'))
-except:
-    pass
+except Exception as e:
+    print(str(e.args))
+    exit(1)
 
 import uvloop
 from japronto import Application
@@ -36,11 +37,25 @@ lists = {
     "transactions": TRANSACTIONS
 }
 
+json_attributes = [
+    'origin',
+    'target',
+    'type',
+    'number',
+    'customer_id',
+    'id',
+    'account',
+    'account_id',
+    'alias',
+    'brand',
+    'transaction_id'
+]
+
 port = int(os.getenv('PORT', 8080))
 redis_host = os.environ['REDIS_SERVER']
 redis_port = int(os.environ['REDIS_PORT'])
 redis_password = os.environ['REDIS_PASSWORD']
-redis_poolsize = int(os.environ['REDIS_POOL'])
+redis_pool_size = int(os.environ['REDIS_POOL'])
 
 conn = None
 queue = Queue()
@@ -57,21 +72,21 @@ def add_months(source_date, months):
 
 
 def serialize(process_queue):
-    async def redis_serialize(process_queue):
+    async def redis_serialize(p_queue):
 
         async def push(key, items):
-            values = [json.dumps(item) for item in items]
+            values = [ujson.dumps(item) for item in items]
             if len(values) > 0:
-                await conn.rpush(key, values)
+                await redis_conn.rpush(key, values)
 
         if os.environ['REDIS_PASSWORD'].strip() == '':
-            conn = await asyncio_redis.Pool.create(
+            redis_conn = await asyncio_redis.Pool.create(
                 host=os.environ['REDIS_SERVER'],
                 port=int(os.environ['REDIS_PORT']),
                 poolsize=int(os.environ['REDIS_POOL'])
             )
         else:
-            conn = await asyncio_redis.Pool.create(
+            redis_conn = await asyncio_redis.Pool.create(
                 host=os.environ['REDIS_SERVER'],
                 port=int(os.environ['REDIS_PORT']),
                 password=os.environ['REDIS_PASSWORD'],
@@ -79,11 +94,11 @@ def serialize(process_queue):
             )
 
         while True:
-            obj = json.loads(process_queue.get())
+            obj = ujson.loads(p_queue.get())
             keys = [i.lower() for i in obj["data"]]
             tasks = [push(k, v) for k, v in obj["lists"].items()]
             if len(keys) > 0:
-                await conn.delete(keys)
+                await redis_conn.delete(keys)
             await asyncio.gather(*tasks)
 
     try:
@@ -91,7 +106,7 @@ def serialize(process_queue):
         import selectors
         import asyncio
         import asyncio_redis
-        import ujson as json
+        import ujson
 
         executor = concurrent.futures.ThreadPoolExecutor()
         selector = selectors.SelectSelector()
@@ -101,19 +116,18 @@ def serialize(process_queue):
         asyncio.ensure_future(redis_serialize(process_queue))
         loop.run_forever()
 
+    except Exception as exception:
+        print(str(exception.args))
+        exit(1)
 
-    except Exception as e:
-        print(str(e))
-        raise e
 
-
-def handle_response(request, response, code, message, make_jsonify=True):
+def handle_response(request, response, code, message, make_json=True):
     response['response']['code'] = code
     response['response']['message'] = message
-    return request.Response(json=response) if make_jsonify else response
+    return request.Response(json=response) if make_json else response
 
 
-def generic(product, error_message, request, make_jsonify=True, condition='OR'):
+def generic(product, error_message, request, make_json=True, condition='OR'):
     message = dict(response=dict(code=1, message="Something is wrong."))
     try:
         if request.method == 'GET':
@@ -121,52 +135,47 @@ def generic(product, error_message, request, make_jsonify=True, condition='OR'):
             for item in product:
                 if 'brand' in item:
                     today = datetime.today()
-                    court_date = datetime(today.year, today.month, item['court_date'])
+                    court_date = datetime(
+                        today.year,
+                        today.month,
+                        item['court_date']
+                    )
                     if court_date > datetime(today.year, today.month, 1):
                         next_payment_day = \
-                            datetime(today.year, today.month, item['court_date']) + timedelta(days=15)
+                            datetime(
+                                today.year,
+                                today.month,
+                                item['court_date']
+                            ) + timedelta(days=15)
                     else:
                         if today.month < 12:
                             next_payment_day = \
-                                datetime(today.year, today.month + 1, item['court_date']) + timedelta(days=15)
+                                datetime(
+                                    today.year,
+                                    today.month + 1,
+                                    item['court_date']
+                                ) + timedelta(days=15)
                         else:
                             next_payment_day = \
-                                datetime(today.year + 1, 1, item['court_date']) + timedelta(days=15)
+                                datetime(
+                                    today.year + 1,
+                                    1,
+                                    item['court_date']
+                                ) + timedelta(days=15)
                     item['next_payment_day'] = next_payment_day
                     item['next_payment_day'] = item['next_payment_day'].strftime("%m/%d/%Y")
             if not args:
-                return handle_response(request, message, 0, product, make_jsonify)
+                return handle_response(request, message, 0, product, make_json)
             else:
                 content = error_message
                 for k, v in args.items():
-                    if k in (
-                            'account_id',
-                            'customer_id',
-                            'id',
-                            'account',
-                            'origin',
-                            'target',
-                            'type',
-                            'number',
-                            'alias',
-                            'brand',
-                            'transaction_id',
-                    ):
+                    if k in json_attributes:
                         content = []
                         for item in product:
-                            if v in (
-                                    str(item['origin']) if 'origin' in item else '',
-                                    str(item['target']) if 'target' in item else '',
-                                    str(item['type']) if 'type' in item else '',
-                                    str(item['number']) if 'number' in item else '',
-                                    str(item['customer_id']) if 'customer_id' in item else '',
-                                    str(item['id']) if 'id' in item else '',
-                                    str(item['account']) if 'account' in item else '',
-                                    str(item['account_id']) if 'account_id' in item else '',
-                                    str(item['alias']) if 'alias' in item else '',
-                                    str(item['brand']) if 'brand' in item else '',
-                                    str(item['transaction_id']) if 'transaction_id' in item else '',
-                            ):
+                            if v in [
+                                item[attribute] if attribute in item else ''
+                                for attribute in json_attributes
+                            ]:
                                 content.append(item)
                 if condition == 'AND':
                     for k, v in args.items():
@@ -179,12 +188,12 @@ def generic(product, error_message, request, make_jsonify=True, condition='OR'):
                             else:
                                 i += 1
 
-                return handle_response(request, message, 0, content, make_jsonify)
+                return handle_response(request, message, 0, content, make_json)
         else:
-            return handle_response(request, message, 2, "Method Not Allowed", make_jsonify)
-    except Exception as e:
-        message['response']['error'] = str(e.args)
-        return request.Response(json=message) if make_jsonify else message
+            return handle_response(request, message, 2, "Method Not Allowed", make_json)
+    except Exception as exception:
+        message['response']['error'] = str(exception.args)
+        return request.Response(json=message) if make_json else message
 
 
 def debit(transaction):
@@ -346,7 +355,13 @@ def credit_cards_statement(request):
     args = request.query
     try:
         if len(args) > 0 and ('number' in args or ('brand' in args and 'customer_id' in args)):
-            response = generic(CREDIT_CARDS, 'Wrong Credit Card Number', request, False, 'AND')['response']
+            response = generic(
+                CREDIT_CARDS,
+                'Wrong Credit Card Number',
+                request,
+                False,
+                'AND'
+            )['response']
             if response['code'] == 0 and len(response['message']) > 0:
                 credit_card = response['message'][0]
                 request.query["account"] = credit_card['number']
@@ -357,7 +372,10 @@ def credit_cards_statement(request):
                     request,
                     False
                 )['response']['message']
-                next_court_day = datetime.strptime(credit_card['next_payment_day'], "%m/%d/%Y") - timedelta(days=15)
+                next_court_day = datetime.strptime(
+                    credit_card['next_payment_day'],
+                    "%m/%d/%Y"
+                ) - timedelta(days=15)
                 last_court_day = add_months(next_court_day, -1)
                 total_to_payment = Decimal("0.0")
                 for movement in credit_card_movements:
@@ -584,21 +602,21 @@ async def main():
     global redis_host
     global redis_port
     global redis_password
-    global redis_poolsize
+    global redis_pool_size
 
     try:
         if redis_password.strip() == '':
             conn = await asyncio_redis.Pool.create(
                 host=redis_host,
                 port=redis_port,
-                poolsize=redis_poolsize
+                poolsize=redis_pool_size
             )
         else:
             conn = await asyncio_redis.Pool.create(
                 host=redis_host,
                 port=redis_port,
                 password=redis_password,
-                poolsize=redis_poolsize
+                poolsize=redis_pool_size
             )
 
         redis_accounts = (await conn.lrange('accounts', 0, -1))._result

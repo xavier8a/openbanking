@@ -1,3 +1,4 @@
+uvloop
 asyncio_redis
 ujson
 redis
