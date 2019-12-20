@@ -503,35 +503,38 @@ async def clear(request):
 async def customer_register(request):
     global CUSTOMERS
     message = dict(response=dict(code=1, message="Sorry, your data is wrong."))
+    response = ''
     try:
         if request.method == 'POST':
             input_body = request.json
-            user_exist = False
-            for customer in CUSTOMERS:
-                if customer["email"] == input_body["email"]:
-                    message['response']['message'] = "User already exist!"
-                    user_exist = True
-                    break
-            if not user_exist:
-                message['response']['code'] = 0
-                message['response']['message'] = "".join(
-                    [
-                        "Hello ",
-                        input_body["name"],
-                        ' ',
-                        input_body["last_name"],
-                        " your mail ",
-                        input_body["email"],
-                        " is registered. Thank you"
-                    ]
-                )
-                input_body["id"] = str(len(CUSTOMERS) + 1)
-                CUSTOMERS.append(input_body)
-                data = {
-                    "data": ['CUSTOMERS'],
-                    "lists": lists
-                }
-                queue.put(json.dumps(data))
+            for i in input_body:
+                user_exist = False
+                for c in CUSTOMERS:
+                    if c["email"] == i["email"]:
+                        response += "Email %s already exist!" % i['email']
+                        user_exist = True
+                        break
+                if not user_exist:
+                    response += "".join(
+                        [
+                            i["name"],
+                            ' ',
+                            i["last_name"],
+                            " your mail ",
+                            i["email"],
+                            " is registered."
+                        ]
+                    )
+                    i["id"] = str(len(CUSTOMERS) + 1)
+                    CUSTOMERS.append(i)
+                response += " | "
+            data = {
+                "data": ['CUSTOMERS'],
+                "lists": lists
+            }
+            queue.put(json.dumps(data))
+            message['response']['code'] = 0
+            message['response']['message'] = response
             return request.Response(json=message)
         else:
             return handle_response(request, message, 2, "Method Not Allowed")
