@@ -1,7 +1,7 @@
 import os
 import sys
 import random
-import ujson as json
+import ujson
 import uuid
 import asyncio
 import asyncio_redis
@@ -314,7 +314,7 @@ async def transfers(request):
                     "data": ['ACCOUNTS', 'CREDIT_CARDS', 'MOVEMENTS', 'TRANSACTIONS'],
                     "lists": lists
                 }
-                queue.put(json.dumps(data))
+                queue.put(ujson.dumps(data))
                 return handle_response(request, message, 0, "Transaction completed successfully!")
             else:
                 return handle_response(request, message, 0, "Sorry, your transaction can't be completed!")
@@ -468,7 +468,7 @@ async def fill(request):
                         "data": ['ACCOUNTS', 'CREDIT_CARDS'],
                         "lists": lists
                     }
-                    queue.put(json.dumps(data))
+                    queue.put(ujson.dumps(data))
                 resp = handle_response(request, message, 0, 'Accounts & Credit Cards created!')
             else:
                 resp = handle_response(request, message, 0, "Accounts & Credit Cards already exist!")
@@ -532,7 +532,7 @@ async def customer_register(request):
                 "data": ['CUSTOMERS'],
                 "lists": lists
             }
-            queue.put(json.dumps(data))
+            queue.put(ujson.dumps(data))
             message['response']['code'] = 0
             message['response']['message'] = response
             return request.Response(json=message)
@@ -584,7 +584,7 @@ async def main():
         for k, v in lists.items():
             data = await conn.lrange(k, 0, -1)
             for i in data:
-                v.append(json.loads(await i))
+                v.append(ujson.loads(await i))
         # *** Create serializer sub-process *** #
         p = Process(name='serializer', target=serialize, args=(queue,))
         p.start()
