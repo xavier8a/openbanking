@@ -333,11 +333,6 @@ async def transfers(request):
         )
 
 
-def credit_cards(request, condition='OR'):
-    global CREDIT_CARDS
-    return generic(CREDIT_CARDS, 'Wrong Account Id', request, condition)
-
-
 def credit_cards_statement(request):
     global CREDIT_CARDS
     global MOVEMENTS
@@ -399,21 +394,6 @@ def credit_cards_statement(request):
             1,
             "Sorry, your data is wrong. %s" % str(e.args)
         )
-
-
-def accounts(request):
-    global ACCOUNTS
-    return generic(ACCOUNTS, 'Wrong Account Id', request)
-
-
-def movements(request):
-    global MOVEMENTS
-    return generic(MOVEMENTS, 'Wrong Account Id', request)
-
-
-def transactions(request):
-    global TRANSACTIONS
-    return generic(TRANSACTIONS, 'Wrong Transaction Id', request)
 
 
 async def fill(request):
@@ -532,11 +512,6 @@ async def clear(request):
         return resp
 
 
-def customers(request):
-    global CUSTOMERS
-    return generic(CUSTOMERS, 'Client not exist.', request)
-
-
 async def customer_register(request):
     global CUSTOMERS
     global app
@@ -577,6 +552,31 @@ async def customer_register(request):
     except Exception as e:
         message['response']['error'] = str(e.args)
         return handle_response(request, message, 1, "Sorry, your data is wrong.")
+
+
+def credit_cards(request, condition='OR'):
+    global CREDIT_CARDS
+    return generic(CREDIT_CARDS, 'Wrong Account Id', request, condition)
+
+
+def customers(request):
+    global CUSTOMERS
+    return generic(CUSTOMERS, 'Client not exist.', request)
+
+
+def accounts(request):
+    global ACCOUNTS
+    return generic(ACCOUNTS, 'Wrong Account Id', request)
+
+
+def movements(request):
+    global MOVEMENTS
+    return generic(MOVEMENTS, 'Wrong Account Id', request)
+
+
+def transactions(request):
+    global TRANSACTIONS
+    return generic(TRANSACTIONS, 'Wrong Transaction Id', request)
 
 
 def root(request):
