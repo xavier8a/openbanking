@@ -3,12 +3,10 @@ import sys
 import random
 import ujson
 import uuid
+import uvloop
 import asyncio
 import asyncio_redis
 import calendar
-from datetime import datetime, timedelta
-from multiprocessing import Process, Queue
-from decimal import *
 
 try:
     sys.path.append(os.path.abspath('./'))
@@ -16,8 +14,10 @@ except Exception as e:
     print(str(e.args))
     exit(1)
 
-import uvloop
+from datetime import datetime, timedelta
+from multiprocessing import Process, Queue
 from japronto import Application
+from decimal import *
 
 uvloop.install()
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
