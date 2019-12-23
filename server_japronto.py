@@ -475,8 +475,8 @@ async def fill(request):
         else:
             resp = handle_response(request, message, 2, "Method Not Allowed")
 
-    except Exception as e:
-        message['response']['error'] = str(e.args)
+    except Exception as exception:
+        message['response']['error'] = str(exception.args)
         resp = request.Response(json=message)
     finally:
         return resp
@@ -589,13 +589,13 @@ async def main():
         p = Process(name='serializer', target=serialize, args=(queue,))
         p.start()
         print("Process SERIALIZER was created with PID: %s" % str(p.pid))
-    except Exception as e:
-        if e.args[0] != "This event loop is already running":
+    except Exception as exception:
+        if exception.args[0] != "This event loop is already running":
             print(
                 "Can't connect to REDIS Server %s PORT %s" %
                 (redis_params['host'], redis_params['port'])
             )
-            print(e.args[0])
+            print(exception.args[0])
 
 
 if __name__ == "__main__":
