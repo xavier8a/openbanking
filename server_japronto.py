@@ -60,6 +60,11 @@ redis_params = {
     'poolsize': int(os.getenv('REDIS_POOL', 7))
 }
 
+delete_query_strings = (
+    "apikey",
+    "secret"
+)
+
 conn = None
 queue = Queue()
 app = Application(debug=False)
@@ -122,7 +127,11 @@ def generic(product, error_message, request, make_json=True, condition='OR'):
     message = dict(response=dict(code=1, message="Something is wrong."))
     try:
         if request.method == 'GET':
-            args = request.query
+            args = {}
+            pre_args = request.query
+            for k, v in pre_args.items():
+                if k not in delete_query_strings:
+                    args[k] = v
             for item in product:
                 if 'brand' in item:
                     today = datetime.today()
