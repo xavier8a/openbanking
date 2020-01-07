@@ -62,7 +62,10 @@ redis_params = {
 
 delete_query_strings = (
     "apikey",
-    "secret"
+    "secret",
+    "secretid",
+    "api-key",
+    "secret-id"
 )
 
 conn = None
