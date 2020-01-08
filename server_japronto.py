@@ -56,7 +56,7 @@ port = int(os.getenv('PORT', 8080))
 redis_params = {
     'host': os.getenv('REDIS_SERVER', '127.0.0.1'),
     'port': int(os.getenv('REDIS_PORT', 6379)),
-    'password': os.getenv('REDIS_PASSWORD', None),
+    'password': os.getenv('REDIS_PASSWORD'),
     'poolsize': int(os.getenv('REDIS_POOL', 7))
 }
 
@@ -64,13 +64,15 @@ delete_query_strings = (
     "apikey",
     "secret",
     "secretid",
+    "cientid",
     "api-key",
-    "secret-id"
+    "secret-id",
+    "client_id"
 )
 
 conn = None
 queue = Queue()
-app = Application(debug=False)
+app = Application()
 rt = app.router
 
 
@@ -313,7 +315,7 @@ async def transfers(request):
                     if accredit(transaction):
                         successful = True
                     else:
-                        transaction['amount'] = transaction['amount'] * -1
+                        transaction['amount'] *= -1
                         debit(transaction)
             elif input_body["type"] == "DEBIT":
                 successful = debit(transaction)
@@ -623,4 +625,4 @@ if __name__ == "__main__":
     rt.add_route('/transfers', transfers)
     rt.add_route('/credit_cards', credit_cards)
     rt.add_route('/credit_cards/statement', credit_cards_statement)
-    app.run(host="0.0.0.0", port=port)
+    app.run(port=port)
