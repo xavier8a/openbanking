@@ -60,15 +60,17 @@ redis_params = {
     'poolsize': int(os.getenv('REDIS_POOL', 7))
 }
 
-delete_query_strings = (
+delete_query_strings = [
     "apikey",
     "secret",
     "secretid",
     "cientid",
     "api-key",
     "secret-id",
-    "client_id"
-)
+    "client_id",
+    "code",
+    "error"
+]
 
 conn = None
 queue = Queue()
