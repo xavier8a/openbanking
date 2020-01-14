@@ -46,7 +46,7 @@ class ClientApplication(object):
         if env["PATH_INFO"] == "/app":
             status, body, headers = self._serve_application(env)
         elif env["PATH_INFO"] == "/callback":
-            status, body, headers = self._serve_application(env)
+            status, body, headers = self._read_auth_token(env)
         else:
             status = "301 Moved"
             body = ""
