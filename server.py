@@ -13,8 +13,9 @@ from decimal import *
 
 try:
     sys.path.append(os.path.abspath('./'))
-except:
-    pass
+except Exception as e:
+    print(str(e.args))
+    exit(1)
 
 from quart import send_from_directory
 from quart import Quart, request, jsonify
@@ -58,12 +59,6 @@ delete_query_strings = [
     "code",
     "error"
 ]
-
-port = int(os.getenv('PORT', 8080))
-redis_host = os.getenv('REDIS_SERVER', '127.0.0.1')
-redis_port = int(os.getenv('REDIS_PORT', 6379))
-redis_password = os.getenv('REDIS_PASSWORD')
-redis_poolsize = int(os.getenv('REDIS_POOL', 7))
 
 app = Quart(__name__)
 if not hasattr(sys, 'loop'):
@@ -564,19 +559,13 @@ async def main():
     global lists
     global app
     global conn
-    global port
-    global redis_host
-    global redis_port
-    global redis_password
-    global redis_poolsize
 
     try:
-
         conn = await asyncio_redis.Pool.create(
-            host=redis_host,
-            port=redis_port,
-            password=redis_password,
-            poolsize=redis_poolsize
+            host=os.getenv('REDIS_SERVER', '127.0.0.1'),
+            port=int(os.getenv('REDIS_PORT', 6379)),
+            password=os.getenv('REDIS_PASSWORD'),
+            poolsize=int(os.getenv('REDIS_POOL', 7))
         )
 
         for k, v in lists.items():
@@ -584,10 +573,21 @@ async def main():
             for i in data:
                 v.append(json.loads(await i))
 
-        app.run(host="0.0.0.0", port=port, debug=False, loop=sys.loop)
+        app.run(
+            host="0.0.0.0",
+            port=int(os.getenv('PORT', 8080)),
+            debug=False,
+            loop=sys.loop
+        )
     except Exception as e:
         if e.args[0] != "This event loop is already running":
-            print("Can't connect to REDIS Server %s PORT %s" % (redis_host, redis_port))
+            print(
+                "Can't connect to REDIS Server %s PORT %s" %
+                (
+                    os.getenv('REDIS_SERVER', '127.0.0.1'),
+                    int(os.getenv('REDIS_PORT', 6379))
+                )
+            )
             print(e.args[0])
 
 
