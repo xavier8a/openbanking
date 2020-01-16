@@ -33,12 +33,37 @@ lists = {
     "transactions": TRANSACTIONS
 }
 
-port = int(os.getenv('PORT', 8080))
-redis_host = os.environ['REDIS_SERVER']
-redis_port = int(os.environ['REDIS_PORT'])
-redis_password = os.environ['REDIS_PASSWORD']
-redis_poolsize = int(os.environ['REDIS_POOL'])
+json_attributes = [
+    'origin',
+    'target',
+    'type',
+    'number',
+    'customer_id',
+    'id',
+    'account',
+    'account_id',
+    'alias',
+    'brand',
+    'transaction_id'
+]
 
+delete_query_strings = [
+    "apikey",
+    "secret",
+    "secretid",
+    "cientid",
+    "api-key",
+    "secret-id",
+    "client_id",
+    "code",
+    "error"
+]
+
+port = int(os.getenv('PORT', 8080))
+redis_host = os.getenv('REDIS_SERVER', '127.0.0.1')
+redis_port = int(os.getenv('REDIS_PORT', 6379))
+redis_password = os.getenv('REDIS_PASSWORD')
+redis_poolsize = int(os.getenv('REDIS_POOL', 7))
 
 app = Quart(__name__)
 if not hasattr(sys, 'loop'):
@@ -92,52 +117,50 @@ def generic(product, error_message, args, make_jsonify=True, condition='OR'):
             for item in product:
                 if 'brand' in item:
                     today = datetime.today()
-                    court_date = datetime(today.year, today.month, item['court_date'])
+                    court_date = datetime(
+                        today.year,
+                        today.month,
+                        item['court_date']
+                    )
                     if court_date > datetime(today.year, today.month, 1):
                         next_payment_day = \
-                            datetime(today.year, today.month, item['court_date']) + timedelta(days=15)
+                            datetime(
+                                today.year,
+                                today.month,
+                                item['court_date']
+                            ) + timedelta(days=15)
                     else:
                         if today.month < 12:
                             next_payment_day = \
-                                datetime(today.year, today.month + 1, item['court_date']) + timedelta(days=15)
+                                datetime(
+                                    today.year,
+                                    today.month + 1,
+                                    item['court_date']
+                                ) + timedelta(days=15)
                         else:
                             next_payment_day = \
-                                datetime(today.year + 1, 1, item['court_date']) + timedelta(days=15)
+                                datetime(
+                                    today.year + 1,
+                                    1,
+                                    item['court_date']
+                                ) + timedelta(days=15)
                     item['next_payment_day'] = next_payment_day
                     item['next_payment_day'] = item['next_payment_day'].strftime("%m/%d/%Y")
+            for k, v in args.items():
+                if k in delete_query_strings:
+                    del args[k]
             if len(args) == 0:
                 return handle_response(message, 0, product, make_jsonify)
             else:
                 content = error_message
                 for k, v in args.items():
-                    if k in (
-                            'account_id',
-                            'customer_id',
-                            'id',
-                            'account',
-                            'origin',
-                            'target',
-                            'type',
-                            'number',
-                            'alias',
-                            'brand',
-                            'transaction_id',
-                    ):
+                    if k in json_attributes:
                         content = []
                         for item in product:
-                            if v in (
-                                    str(item['origin']) if 'origin' in item else '',
-                                    str(item['target']) if 'target' in item else '',
-                                    str(item['type']) if 'type' in item else '',
-                                    str(item['number']) if 'number' in item else '',
-                                    str(item['customer_id']) if 'customer_id' in item else '',
-                                    str(item['id']) if 'id' in item else '',
-                                    str(item['account']) if 'account' in item else '',
-                                    str(item['account_id']) if 'account_id' in item else '',
-                                    str(item['alias']) if 'alias' in item else '',
-                                    str(item['brand']) if 'brand' in item else '',
-                                    str(item['transaction_id']) if 'transaction_id' in item else '',
-                            ):
+                            if v in [
+                                item[attribute] if attribute in item else ''
+                                for attribute in json_attributes
+                            ]:
                                 content.append(item)
                 if condition == 'AND':
                     for k, v in args.items():
@@ -160,7 +183,6 @@ def generic(product, error_message, args, make_jsonify=True, condition='OR'):
 
 def debit(transaction):
     global MOVEMENTS
-
 
     result = 0
     before = 0
@@ -278,7 +300,7 @@ async def transfers():
                     if accredit(transaction):
                         successful = True
                     else:
-                        transaction['amount'] = transaction['amount'] * -1
+                        transaction['amount'] *= -1
                         debit(transaction)
             elif input_body["type"] == "DEBIT":
                 successful = debit(transaction)
@@ -475,27 +497,19 @@ def fill():
 
 @app.route("/clear", methods=['GET'])
 async def clear():
-    global CUSTOMERS
-    global ACCOUNTS
-    global CREDIT_CARDS
-    global MOVEMENTS
-
+    global lists
     message = dict(response=dict(code=1, message="Something is wrong."))
     try:
         if request.method == 'GET':
             await conn.flushdb()
-            CUSTOMERS.clear()
-            ACCOUNTS.clear()
-            CREDIT_CARDS.clear()
-            MOVEMENTS.clear()
-            TRANSACTIONS.clear()
-            resp = handle_response(message, 0, 'FLUSH DB OK!')
+            [v.clear() for k, v in lists.items()]
+            resp = handle_response(request, message, 0, 'FLUSH DB OK!')
         else:
-            resp = handle_response(message, 2, "Method Not Allowed")
+            resp = handle_response(request, message, 2, "Method Not Allowed")
 
-    except Exception as e:
-        message['response']['error'] = str(e.args)
-        resp = jsonify(message)
+    except Exception as exception:
+        message['response']['error'] = str(exception.args)
+        resp = request.Response(json=message)
     finally:
         return resp
 
@@ -547,9 +561,7 @@ async def customer_register():
 
 
 async def main():
-    global ACCOUNTS
-    global CREDIT_CARDS
-    global CUSTOMERS
+    global lists
     global app
     global conn
     global port
@@ -559,32 +571,18 @@ async def main():
     global redis_poolsize
 
     try:
-        if redis_password.strip() == '':
-            conn = await asyncio_redis.Pool.create(
-                host=redis_host,
-                port=redis_port,
-                poolsize=redis_poolsize
-            )
-        else:
-            conn = await asyncio_redis.Pool.create(
+
+        conn = await asyncio_redis.Pool.create(
                 host=redis_host,
                 port=redis_port,
                 password=redis_password,
                 poolsize=redis_poolsize
-            )
+        )
 
-        redis_accounts = (await conn.lrange('accounts', 0, -1))._result
-        redis_credit_cards = (await conn.lrange('credit_cards', 0, -1))._result
-        redis_customers = (await conn.lrange('customers', 0, -1))._result
-        redis_movements = (await conn.lrange('movements', 0, -1))._result
-        redis_transactions = (await conn.lrange('transactions', 0, -1))._result
-
-        if redis_accounts.count > 0 or redis_credit_cards.count > 0 or redis_customers.count > 0:
-            [ACCOUNTS.append(json.loads(account)) for account in redis_accounts._data_queue]
-            [CREDIT_CARDS.append(json.loads(credit_card)) for credit_card in redis_credit_cards._data_queue]
-            [CUSTOMERS.append(json.loads(customer)) for customer in redis_customers._data_queue]
-            [MOVEMENTS.append(json.loads(movement)) for movement in redis_movements._data_queue]
-            [TRANSACTIONS.append(json.loads(transaction)) for transaction in redis_transactions._data_queue]
+        for k, v in lists.items():
+            data = await conn.lrange(k, 0, -1)
+            for i in data:
+                v.append(json.loads(await i))
 
         app.run(host="0.0.0.0", port=port, debug=False, loop=sys.loop)
     except Exception as e:
