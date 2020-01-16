@@ -20,14 +20,14 @@ class ExampleSiteAdapter(oauth2.web.AuthorizationCodeGrantSiteAdapter,
 
     def render_auth_page(self, request, response, environ, scopes, client):
         response.body = '''
-<html>
-    <body>
-        <form method="POST" name="confirmation_form">
-            <input type="submit" name="confirm" value="confirm" />
-            <input type="submit" name="deny" value="deny" />
-        </form>
-    </body>
-</html>'''
+        <html>
+            <body>
+                <form method="POST" name="confirmation_form">
+                    <input type="submit" name="confirm" value="confirm" />
+                    <input type="submit" name="deny" value="deny" />
+                </form>
+            </body>
+        </html>'''
         return response
 
     def user_has_denied_access(self, request):
