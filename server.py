@@ -13,8 +13,8 @@ from decimal import *
 
 try:
     sys.path.append(os.path.abspath('./'))
-except Exception as e:
-    print(str(e.args))
+except Exception as ex:
+    print(str(ex.args))
     exit(1)
 
 from quart import send_from_directory
@@ -94,9 +94,9 @@ async def serialize(data):
         tasks = [push(k, v) for k, v in lists.items()]
         await asyncio.gather(*tasks)
 
-    except Exception as e:
-        print(str(e))
-        raise e
+    except Exception as ex:
+        print(str(ex))
+        raise ex
 
 
 def handle_response(response, code, message, make_jsonify=True):
@@ -171,8 +171,8 @@ def generic(product, error_message, args, make_jsonify=True, condition='OR'):
                 return handle_response(message, 0, content, make_jsonify)
         else:
             return handle_response(message, 2, "Method Not Allowed", make_jsonify)
-    except Exception as e:
-        message['response']['error'] = str(e.args)
+    except Exception as ex:
+        message['response']['error'] = str(ex.args)
         return jsonify(message) if make_jsonify else message
 
 
@@ -311,11 +311,11 @@ async def transfers():
                 )
         else:
             resp = handle_response(message, 2, "Method Not Allowed")
-    except Exception as e:
+    except Exception as ex:
         resp = handle_response(
             message,
             1,
-            "Sorry, your data is wrong. %s" % str(e.args)
+            "Sorry, your data is wrong. %s" % str(ex.args)
         )
     finally:
         return resp
@@ -372,11 +372,11 @@ def credit_cards_statement():
                 )
         else:
             resp = handle_response(message, 1, 'Not enough arguments.')
-    except Exception as e:
+    except Exception as ex:
         resp = handle_response(
             message,
             1,
-            "Sorry, your data is wrong. %s" % str(e.args)
+            "Sorry, your data is wrong. %s" % str(ex.args)
         )
     finally:
         return resp
@@ -483,8 +483,8 @@ def fill():
         else:
             resp = handle_response(message, 2, "Method Not Allowed")
 
-    except Exception as e:
-        message['response']['error'] = str(e.args)
+    except Exception as ex:
+        message['response']['error'] = str(ex.args)
         resp = jsonify(message)
     finally:
         return resp
@@ -548,8 +548,8 @@ async def customer_register():
             resp = jsonify(message)
         else:
             resp = handle_response(message, 2, "Method Not Allowed")
-    except Exception as e:
-        message['response']['error'] = str(e.args)
+    except Exception as ex:
+        message['response']['error'] = str(ex.args)
         resp = handle_response(message, 1, "Sorry, your data is wrong.")
     finally:
         return resp
@@ -579,8 +579,8 @@ async def main():
             debug=False,
             loop=sys.loop
         )
-    except Exception as e:
-        if e.args[0] != "This event loop is already running":
+    except Exception as ex:
+        if ex.args[0] != "This event loop is already running":
             print(
                 "Can't connect to REDIS Server %s PORT %s" %
                 (
@@ -588,7 +588,7 @@ async def main():
                     int(os.getenv('REDIS_PORT', 6379))
                 )
             )
-            print(e.args[0])
+            print(ex.args[0])
 
 
 @app.route('/')
