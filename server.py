@@ -573,10 +573,10 @@ async def main():
     try:
 
         conn = await asyncio_redis.Pool.create(
-                host=redis_host,
-                port=redis_port,
-                password=redis_password,
-                poolsize=redis_poolsize
+            host=redis_host,
+            port=redis_port,
+            password=redis_password,
+            poolsize=redis_poolsize
         )
 
         for k, v in lists.items():

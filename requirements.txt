@@ -1,3 +1,4 @@
+quart
 tornado
 oauth2
 urlparse2
