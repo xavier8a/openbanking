@@ -338,7 +338,13 @@ def credit_cards_statement():
     args = request.args
     try:
         if len(args) > 0 and ('number' in args or ('brand' in args and 'customer_id' in args)):
-            response = generic(CREDIT_CARDS, 'Wrong Credit Card Number', args, False, 'AND')['response']
+            response = generic(
+                CREDIT_CARDS,
+                'Wrong Credit Card Number',
+                args,
+                False,
+                'AND'
+            )['response']
             if response['code'] == 0 and len(response['message']) > 0:
                 credit_card = response['message'][0]
                 credit_card_movements = generic(
@@ -347,11 +353,16 @@ def credit_cards_statement():
                     {'account': credit_card['number']},
                     False
                 )['response']['message']
-                next_court_day = datetime.strptime(credit_card['next_payment_day'], "%m/%d/%Y") - timedelta(days=15)
+                next_court_day = datetime.strptime(
+                    credit_card['next_payment_day'],
+                    "%m/%d/%Y") - timedelta(days=15)
                 last_court_day = add_months(next_court_day, -1)
                 total_to_payment = Decimal("0.0")
                 for movement in credit_card_movements:
-                    movement_date = datetime.strptime(movement['date'].split(',')[0], "%m/%d/%Y")
+                    movement_date = datetime.strptime(
+                        movement['date'].split(',')[0],
+                        "%m/%d/%Y"
+                    )
                     if last_court_day < movement_date < next_court_day:
                         current_credit_card_movements.append(movement)
                         if movement['type'] == 'DEBIT':
@@ -476,7 +487,10 @@ def fill():
                         "court_date": 24
                     }
                     CREDIT_CARDS.append(credit_card)
-                    asyncio.ensure_future(serialize(['ACCOUNTS', 'CREDIT_CARDS']), loop=sys.loop)
+                    asyncio.ensure_future(
+                        serialize(['ACCOUNTS', 'CREDIT_CARDS']),
+                        loop=sys.loop
+                    )
                 resp = handle_response(message, 0, 'Accounts & Credit Cards created!')
             else:
                 resp = handle_response(message, 0, "Accounts & Credit Cards already exist!")
