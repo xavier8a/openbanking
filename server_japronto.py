@@ -99,9 +99,14 @@ def serialize(process_queue):
         while True:
             obj = ujson.loads(p_queue.get())
             keys = [i.lower() for i in obj["data"]]
-            tasks = [push(k, v) for k, v in obj["lists"].items()]
             if len(keys) > 0:
                 await redis_conn.delete(keys)
+
+            tasks = []
+            for k, v in lists.items():
+                if k in keys:
+                    tasks.append(push(k, v))
+
             await asyncio.gather(*tasks)
 
     try:

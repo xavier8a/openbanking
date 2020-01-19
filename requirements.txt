@@ -1,6 +1,5 @@
 quart
 tornado
-oauth2
 urlparse2
 python-oauth2
 uvloop

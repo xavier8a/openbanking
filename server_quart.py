@@ -91,7 +91,10 @@ async def serialize(data):
         if len(keys) > 0:
             await conn.delete(keys)
 
-        tasks = [push(k, v) for k, v in lists.items()]
+        tasks = []
+        for k, v in lists.items():
+            if k in keys:
+                tasks.append(push(k, v))
         await asyncio.gather(*tasks)
 
     except Exception as ex:
@@ -512,9 +515,9 @@ async def clear():
         if request.method == 'GET':
             await conn.flushdb()
             [v.clear() for k, v in lists.items()]
-            resp = handle_response(request, message, 0, 'FLUSH DB OK!')
+            resp = handle_response(message, 0, 'FLUSH DB OK!')
         else:
-            resp = handle_response(request, message, 2, "Method Not Allowed")
+            resp = handle_response(message, 2, "Method Not Allowed")
 
     except Exception as exception:
         message['response']['error'] = str(exception.args)
