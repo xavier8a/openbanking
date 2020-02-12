@@ -30,3 +30,7 @@ spec:
           valueFrom: interdin.1
         - name: REDIS_POOL
           valueFrom: 10
+        - name: CLIENT_ID
+          valueFrom: openbanking
+        - name: CLIENT_SECRET
+          valueFrom: fe04d64b-1466-4844-bca0-c38fb122923c
