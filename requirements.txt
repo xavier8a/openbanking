@@ -1,3 +1,4 @@
+Cython
 requests
 quart
 tornado

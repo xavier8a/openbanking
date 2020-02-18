@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 from multiprocessing import Process, Queue
 from japronto import Application
 from decimal import *
+from utils import generic, handle_response
 
 uvloop.install()
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -37,20 +38,6 @@ lists = {
     "transactions": TRANSACTIONS
 }
 
-json_attributes = [
-    'origin',
-    'target',
-    'type',
-    'number',
-    'customer_id',
-    'id',
-    'account',
-    'account_id',
-    'alias',
-    'brand',
-    'transaction_id'
-]
-
 port = int(os.getenv('PORT', 8080))
 
 redis_params = {
@@ -59,18 +46,6 @@ redis_params = {
     'password': os.getenv('REDIS_PASSWORD'),
     'poolsize': int(os.getenv('REDIS_POOL', 7))
 }
-
-delete_query_strings = [
-    "apikey",
-    "secret",
-    "secretid",
-    "cientid",
-    "api-key",
-    "secret-id",
-    "client_id",
-    "code",
-    "error"
-]
 
 conn = None
 queue = Queue()
@@ -129,85 +104,6 @@ def serialize(process_queue):
         exit(1)
 
 
-def handle_response(request, response, code, message, make_json=True):
-    response['response']['code'] = code
-    response['response']['message'] = message
-    return request.Response(json=response) if make_json else response
-
-
-def generic(product, error_message, request, make_json=True, condition='OR'):
-    message = dict(response=dict(code=1, message="Something is wrong."))
-    try:
-        if request.method == 'GET':
-            args = {}
-            pre_args = request.query
-            for k, v in pre_args.items():
-                if k not in delete_query_strings:
-                    args[k] = v
-            for item in product:
-                if 'brand' in item:
-                    today = datetime.today()
-                    court_date = datetime(
-                        today.year,
-                        today.month,
-                        item['court_date']
-                    )
-                    if court_date > datetime(today.year, today.month, 1):
-                        next_payment_day = \
-                            datetime(
-                                today.year,
-                                today.month,
-                                item['court_date']
-                            ) + timedelta(days=15)
-                    else:
-                        if today.month < 12:
-                            next_payment_day = \
-                                datetime(
-                                    today.year,
-                                    today.month + 1,
-                                    item['court_date']
-                                ) + timedelta(days=15)
-                        else:
-                            next_payment_day = \
-                                datetime(
-                                    today.year + 1,
-                                    1,
-                                    item['court_date']
-                                ) + timedelta(days=15)
-                    item['next_payment_day'] = next_payment_day
-                    item['next_payment_day'] = item['next_payment_day'].strftime("%m/%d/%Y")
-            if not args:
-                return handle_response(request, message, 0, product, make_json)
-            else:
-                content = error_message
-                for k, v in args.items():
-                    if k in json_attributes:
-                        content = []
-                        for item in product:
-                            if v in [
-                                item[attribute] if attribute in item else ''
-                                for attribute in json_attributes
-                            ]:
-                                content.append(item)
-                if condition == 'AND':
-                    for k, v in args.items():
-                        counter = len(content)
-                        i = 0
-                        while i < counter:
-                            if content[i][k] != v:
-                                content.remove(content[i])
-                                counter -= 1
-                            else:
-                                i += 1
-
-                return handle_response(request, message, 0, content, make_json)
-        else:
-            return handle_response(request, message, 2, "Method Not Allowed", make_json)
-    except Exception as exception:
-        message['response']['error'] = str(exception.args)
-        return request.Response(json=message) if make_json else message
-
-
 def debit(transaction):
     global MOVEMENTS
 
@@ -262,9 +158,11 @@ def accredit(transaction):
             if a['number'] == transaction['target']:
                 before = a['available_balance']
                 if a['type'] == 'savings':
-                    result = Decimal(a['available_balance']) + transaction['amount']
+                    result = Decimal(a['available_balance']) \
+                             + transaction['amount']
                 elif a['type'] == 'loan':
-                    result = Decimal(a['available_balance']) - transaction['amount']
+                    result = Decimal(a['available_balance']) \
+                             - transaction['amount']
                 a['available_balance'] = '{0:.2f}'.format(result)
                 successful = True
                 break
@@ -332,15 +230,35 @@ async def transfers(request):
                 transaction["amount"] = str(transaction["amount"])
                 TRANSACTIONS.append(transaction)
                 data = {
-                    "data": ['ACCOUNTS', 'CREDIT_CARDS', 'MOVEMENTS', 'TRANSACTIONS'],
+                    "data": [
+                        'ACCOUNTS',
+                        'CREDIT_CARDS',
+                        'MOVEMENTS',
+                        'TRANSACTIONS'
+                    ],
                     "lists": lists
                 }
                 queue.put(ujson.dumps(data))
-                return handle_response(request, message, 0, "Transaction completed successfully!")
+                return handle_response(
+                    request,
+                    message,
+                    0,
+                    "Transaction completed successfully!"
+                )
             else:
-                return handle_response(request, message, 0, "Sorry, your transaction can't be completed!")
+                return handle_response(
+                    request,
+                    message,
+                    0,
+                    "Sorry, your transaction can't be completed!"
+                )
         else:
-            return handle_response(request, message, 2, "Method Not Allowed")
+            return handle_response(
+                request,
+                message,
+                2,
+                "Method Not Allowed"
+            )
     except Exception as exception:
         return handle_response(
             request,
@@ -354,10 +272,18 @@ def credit_cards_statement(request):
     global CREDIT_CARDS
     global MOVEMENTS
     current_credit_card_movements = []
-    message = dict(response=dict(code=1, message="Not enough arguments."))
+    message = dict(
+        response=dict(
+            code=1,
+            message="Not enough arguments."
+        )
+    )
     args = request.query
     try:
-        if len(args) > 0 and ('number' in args or ('brand' in args and 'customer_id' in args)):
+        if len(args) > 0 and (
+                'number' in args or
+                ('brand' in args and 'customer_id' in args)
+                ):
             response = generic(
                 CREDIT_CARDS,
                 'Wrong Credit Card Number',
@@ -382,7 +308,10 @@ def credit_cards_statement(request):
                 last_court_day = add_months(next_court_day, -1)
                 total_to_payment = Decimal("0.0")
                 for movement in credit_card_movements:
-                    movement_date = datetime.strptime(movement['date'].split(',')[0], "%m/%d/%Y")
+                    movement_date = datetime.strptime(
+                        movement['date'].split(',')[0],
+                        "%m/%d/%Y"
+                    )
                     if last_court_day < movement_date < next_court_day:
                         current_credit_card_movements.append(movement)
                         if movement['type'] == 'DEBIT':
@@ -403,7 +332,12 @@ def credit_cards_statement(request):
                     }
                 )
         else:
-            return handle_response(request, message, 1, 'Not enough arguments.')
+            return handle_response(
+                request,
+                message,
+                1,
+                'Not enough arguments.'
+            )
     except Exception as e:
         return handle_response(
             request,
@@ -446,7 +380,9 @@ async def fill(request):
                                     last_code
                                 ]
                             ),
-                            "obfuscated": ''.join(['4118-XXXX-XXXX-', last_code]),
+                            "obfuscated": ''.join(
+                                ['4118-XXXX-XXXX-', last_code]
+                            ),
                             "brand": "Visa Titanium",
                             "alias": 'Tarjeta de Crédito',
                             "available_quota": '3000.00',
@@ -490,9 +426,19 @@ async def fill(request):
                         "lists": lists
                     }
                     queue.put(ujson.dumps(data))
-                resp = handle_response(request, message, 0, 'Accounts & Credit Cards created!')
+                resp = handle_response(
+                    request,
+                    message,
+                    0,
+                    'Accounts & Credit Cards created!'
+                )
             else:
-                resp = handle_response(request, message, 0, "Accounts & Credit Cards already exist!")
+                resp = handle_response(
+                    request,
+                    message,
+                    0,
+                    "Accounts & Credit Cards already exist!"
+                )
         else:
             resp = handle_response(request, message, 2, "Method Not Allowed")
 
@@ -523,7 +469,12 @@ async def clear(request):
 
 async def customer_register(request):
     global CUSTOMERS
-    message = dict(response=dict(code=1, message="Sorry, your data is wrong."))
+    message = dict(
+        response=dict(
+            code=1,
+            message="Sorry, your data is wrong."
+        )
+    )
     response = ''
     try:
         if request.method == 'POST':
@@ -561,7 +512,12 @@ async def customer_register(request):
             return handle_response(request, message, 2, "Method Not Allowed")
     except Exception as exception:
         message['response']['error'] = str(exception.args)
-        return handle_response(request, message, 1, "Sorry, your data is wrong.")
+        return handle_response(
+            request,
+            message,
+            1,
+            "Sorry, your data is wrong."
+        )
 
 
 def credit_cards(request, condition='OR'):
@@ -591,7 +547,9 @@ def transactions(request):
 
 def root(request):
     with open('./static/index.html') as html_file:
-        return request.Response(text=html_file.read(), mime_type='text/html')
+        return request.Response(
+            text=html_file.read(), mime_type='text/html'
+        )
 
 
 async def main():

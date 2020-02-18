@@ -8,12 +8,20 @@ import urllib.parse
 import requests
 from termcolor import colored
 
-provider = "http://localhost:9090/auth/realms/master"
+provider = "http://localhost:9090/auth/"
 client_id = "pkce-test"
 username = "xochoa"
 password = "interdin.1"
 redirect_uri = "http://localhost:8080/"
 
+realm = {
+  "realm": "openbanking",
+  "auth-server-url": "http://localhost:9090/auth",
+  "ssl-required": "external",
+  "resource": "openbanking-app",
+  "public-client": True,
+  "confidential-port": 0
+}
 
 def _b64_decode(data):
     data += '=' * (4 - len(data) % 4)
